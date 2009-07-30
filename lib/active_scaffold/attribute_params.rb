@@ -103,7 +103,7 @@ module ActiveScaffold
           end
 
           # we avoid assigning a value that already exists because otherwise has_one associations will break (AR bug in has_one_association.rb#replace)
-          parent_record.send("#{column.name}=", value) unless column.through_association? or parent_record.send(column.name) == value
+          parent_record.send("#{column.name}=", value) unless parent_record.send(column.name) == value
           
           # Set any passthrough parameters that may be associated with this column (ie, file column "keep" and "temp" attributes)
           unless column.params.empty?
