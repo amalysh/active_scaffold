@@ -90,7 +90,7 @@ module ActiveScaffold
 
           method = column.association.macro == :belongs_to ? column.association.primary_key_name : column.name
           options[:name] += '[id]'
-          select(:record, method, select_options.uniq, {:include_blank => as_(:_select_)}, options)
+          select(:record, method, select_options.uniq, { :selected => nil, :include_blank => as_(:_select_)}, options)
         else
           select(:record, column.name, column.options, { :selected => @record.send(column.name) }, options)
         end
