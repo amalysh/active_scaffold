@@ -48,7 +48,9 @@ module ActiveScaffold
                 ["#{column.search_sql} in (?)", value.values.collect{|hash| hash[:id]}]
               end
             else
-              if column.column.nil? || column.column.text?
+              if not column.search_sql.index('?').nil?
+                ["#{column.search_sql}", value]
+              elsif column.column.nil? || column.column.text?
                 ["LOWER(#{column.search_sql}) LIKE ?", like_pattern.sub('?', value.downcase)]
               else
                 ["#{column.search_sql} = ?", column.column.type_cast(value)]
