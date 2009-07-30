@@ -42,7 +42,11 @@ module ActiveScaffold
             when :select
             ["#{column.search_sql} = ?", value[:id]] unless value[:id].blank?
             when :multi_select
-            ["#{column.search_sql} in (?)", value.values.collect{|hash| hash[:id]}]
+              if value.instance_of?(Array)
+                ["#{column.search_sql} in (?)", value]
+              else
+                ["#{column.search_sql} in (?)", value.values.collect{|hash| hash[:id]}]
+              end
             else
               if column.column.nil? || column.column.text?
                 ["LOWER(#{column.search_sql}) LIKE ?", like_pattern.sub('?', value.downcase)]
