@@ -13,32 +13,57 @@
       column = active_scaffold_config.columns[column_name]
       association = column.association
 
-      # determine what constraints we need
-      if column.through_association?
-        @constraints = {
-          association.source_reflection.reverse => {
-            association.through_reflection.reverse => parent_id
+      unless association.nil?
+        # determine what constraints we need
+        if column.through_association?
+          @constraints = {
+            association.source_reflection.reverse => {
+              association.through_reflection.reverse => parent_id
+            }
           }
-        }
-      else
-        @constraints = { association.reverse => parent_id }
-      end
+        else
+          @constraints = { association.reverse => parent_id }
+        end
 
-      # generate the customized label
-      @label = as_(:nested_for_model, :nested_model => active_scaffold_config_for(association.klass).list.label, :parent_model => format_value(@record.to_label))
+        # generate the customized label
+        @label = as_(:nested_for_model, :nested_model => active_scaffold_config_for(association.klass).list.label, :parent_model => format_value(@record.to_label))
 
-      begin
-        controller = active_scaffold_controller_for(association.klass)
-      rescue ActiveScaffold::ControllerNotFound => error
-        concat "#{error.class} - #{error.message}"
+        begin
+          controller = active_scaffold_controller_for(association.klass)
+        rescue ActiveScaffold::ControllerNotFound => error
+          concat "#{error.class} - #{error.message}"
+        else
+          concat render(:active_scaffold => controller.controller_path,
+            :constraints => @constraints,
+            :conditions => association.options[:conditions],
+            :label => h(@label),
+            :params => {:nested => true, :parent_column => column_name, :parent_model => association.active_record}
+          )
+        end
       else
-        concat render(:active_scaffold => controller.controller_path,
-          :constraints => @constraints,
-          :conditions => association.options[:conditions],
-          :label => h(@label),
-          :params => {:nested => true, :parent_column => column_name, :parent_model => association.active_record}
-        )
-      end
+		selected_records = @record.send("#{column_name}")
+        if selected_records.nil? or selected_records.size == 0
+          return
+        else
+          @conditions = {selected_records[0].class.primary_key.to_sym => selected_records.collect{|r| r.send("#{r.class.primary_key}")}}
+          association = selected_records[0]
+        end
+        # generate the customized label
+        @label = as_(:nested_for_model, :nested_model => active_scaffold_config_for(association.class).list.label, :parent_model => format_value(@record.to_label))
+
+        begin
+          controller = active_scaffold_controller_for(association.class)
+        rescue ActiveScaffold::ControllerNotFound => error
+          concat "#{error.class} - #{error.message}"
+        else
+          concat render(:active_scaffold => controller.controller_path,
+            :constraints => @conditions,
+            :conditions => nil,
+            :label => h(@label),
+            :params => {:nested => false, :parent_column => column_name, :parent_model => association.class}
+          )
+        end
+	  end
     end
   end
 %>

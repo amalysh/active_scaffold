@@ -56,7 +56,7 @@ module ActiveScaffold::Actions
     def nested_habtm?
       begin
         a = active_scaffold_config.columns[nested_association]
-        return a.association.macro == :has_and_belongs_to_many if a and nested?
+        return a.association.macro == :has_and_belongs_to_many if a and a.association and nested?
         false
       rescue
         raise ActiveScaffold::MalformedConstraint, constraint_error(active_scaffold_config.model, nested_association), caller

@@ -171,7 +171,13 @@ module ActiveScaffold
     private
 
     def constraint_condition_for(sql, value)
-      value.nil? ? "#{sql} IS NULL" : ["#{sql} = ?", value]
+      if value.instance_of?(Array)
+        ["#{sql} in (?)", value]
+      elsif value.nil?
+        "#{sql} IS NULL"
+      else
+        ["#{sql} = ?", value]
+      end
     end
   end
 end
