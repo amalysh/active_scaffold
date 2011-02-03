@@ -90,6 +90,26 @@ module ActiveScaffold
       alias_method :condition_for_date_type, :condition_for_datetime_type
       alias_method :condition_for_time_type, :condition_for_datetime_type
       alias_method :condition_for_timestamp_type, :condition_for_datetime_type
+
+      def condition_for_calendar_date_select_type(column, value, like_pattern)
+        use_time = column.options[:time]
+        use_time = (column.column.type == :datetime) if use_time.nil?
+        from_value, to_value = ['from', 'to'].collect do |field|
+          DateTime.strptime(value[field], CalendarDateSelect.date_format_string(use_time)).to_time rescue nil
+        end
+
+        conversion = use_time ? 'to_time' : 'to_date'
+
+        if from_value.nil? and to_value.nil?
+          nil
+        elsif !from_value
+          ["#{column.search_sql} < ?", to_value.send(conversion).to_s(:db)]
+        elsif !to_value
+          ["#{column.search_sql} >= ?", from_value.send(conversion).to_s(:db)]
+        else
+          ["#{column.search_sql} >= ? AND #{column.search_sql} < ?", from_value.send(conversion).to_s(:db), to_value.send(conversion).to_s(:db)]
+        end
+      end
     end
 
     NumericComparators = [
