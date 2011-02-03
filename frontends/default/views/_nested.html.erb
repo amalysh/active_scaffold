@@ -16,15 +16,24 @@
       unless association.nil?
         # determine what constraints we need
         if column.through_association?
-          @constraints = {
-            association.source_reflection.reverse => {
-              association.through_reflection.reverse => parent_id
+          th = association.source_reflection.active_record.reflections[association.through_reflection.reverse]
+          if !th.nil? and th.options[:polymorphic]
+            @constraints = {
+              association.source_reflection.reverse => {
+                th.primary_key_name => parent_id,
+                th.options[:foreign_type] => association.through_reflection.active_record.model_name
+              }
             }
-          }
+          else
+            @constraints = {
+              association.source_reflection.reverse => {
+                association.through_reflection.reverse => parent_id
+              }
+            }
+          end
         else
           @constraints = { association.reverse => parent_id }
         end
-
         # generate the customized label
         @label = as_(:nested_for_model, :nested_model => active_scaffold_config_for(association.klass).list.label, :parent_model => format_value(@record.to_label))
 
@@ -41,7 +50,7 @@
           )
         end
       else
-		selected_records = @record.send("#{column_name}")
+        selected_records = @record.send("#{column_name}")
         if selected_records.nil? or selected_records.size == 0
           return
         else

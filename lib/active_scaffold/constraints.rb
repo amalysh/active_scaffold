@@ -48,11 +48,24 @@ module ActiveScaffold
           #   constraint: :den => {:park => 5}
           if v.is_a? Hash
             far_association = column.association.klass.reflect_on_association(v.keys.first)
-            field = far_association.klass.primary_key
-            table = far_association.table_name
+            unless far_association.nil?
+              field = far_association.klass.primary_key
+              table = far_association.table_name
 
-            active_scaffold_joins.concat([{k => v.keys.first}]) # e.g. {:den => :park}
-            constraint_condition_for("#{table}.#{field}", v.values.first)
+              active_scaffold_joins.concat([{k => v.keys.first}]) # e.g. {:den => :park}
+              constraint_condition_for("#{table}.#{field}", v.values.first)
+            else
+              # e.g. { :model_name => {"id" => "bla", "x" => "bla" } }
+              # this is the case for polymorph :through
+              active_scaffold_joins.concat [k]
+              cond = [""]
+              v.each do |vk, vv|
+                cond[0] += " AND " if cond[0].length > 0
+                cond[0] += "#{k}.#{vk} = ?"
+                cond << vv
+              end
+              cond
+            end
 
           # association column constraint
           elsif column.association
