@@ -111,6 +111,8 @@ module ActiveScaffold::Actions
           end
         end
       rescue ActiveRecord::RecordInvalid
+      rescue ActiveRecord::RecordNotSaved
+        self.successful = false
       end
     end
 
