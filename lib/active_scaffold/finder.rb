@@ -215,7 +215,9 @@ module ActiveScaffold
         sql = sort_column.sort[:sql]
         next if sql.nil? or sql.empty?
 
-        order << "#{sql} #{sort_direction}"
+        sql.each do |sub_sql|
+          order << "#{sub_sql} #{sort_direction}"
+        end
       end
 
       order = order.join(', ')
