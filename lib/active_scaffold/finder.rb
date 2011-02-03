@@ -80,11 +80,11 @@ module ActiveScaffold
         if from_value.nil? and to_value.nil?
           nil
         elsif !from_value
-          ["#{column.search_sql} <= ?", to_value.send(conversion).to_s(:db)]
+          ["#{column.search_sql} < ?", to_value.send(conversion).to_s(:db)]
         elsif !to_value
           ["#{column.search_sql} >= ?", from_value.send(conversion).to_s(:db)]
         else
-          ["#{column.search_sql} BETWEEN ? AND ?", from_value.send(conversion).to_s(:db), to_value.send(conversion).to_s(:db)]
+          ["#{column.search_sql} >= ? AND #{column.search_sql} < ?", from_value.send(conversion).to_s(:db), to_value.send(conversion).to_s(:db)]
         end
       end
       alias_method :condition_for_date_type, :condition_for_datetime_type
