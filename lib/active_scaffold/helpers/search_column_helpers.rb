@@ -5,7 +5,7 @@ module ActiveScaffold
       # This method decides which input to use for the given column.
       # It does not do any rendering. It only decides which method is responsible for rendering.
       def active_scaffold_search_for(column)
-        options = active_scaffold_search_options(column).merge(column.options)
+        options = active_scaffold_search_options(column)
 
         # first, check if the dev has created an override for this specific field for search
         if override_search_field?(column)
@@ -105,8 +105,8 @@ module ActiveScaffold
       def active_scaffold_search_boolean(column, options)
         select_options = []
         select_options << [as_(:_select_), nil]
-        select_options << [as_(:true), 1]
-        select_options << [as_(:false), 0]
+        select_options << [as_(:true), true]
+        select_options << [as_(:false), false]
 
         select_tag(options[:name], options_for_select(select_options, @record.send(column.name)))
       end
