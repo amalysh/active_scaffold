@@ -15,7 +15,6 @@ href = url_for(params_for(:action => :update_table, :escape => false).delete_if{
 
   <ol class="form">
     <% active_scaffold_config.field_search.columns.each do |column| -%>
-      <% next unless column.search_sql -%>
       <% name = "search[#{column.name}]" %>
       <% value = nil %>
       <% value = search_params[column.name] if search_params %>
