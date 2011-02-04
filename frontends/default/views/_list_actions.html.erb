@@ -1,13 +1,15 @@
-<table cellpadding="0" cellspacing="0">
+<td class="actions"><table cellpadding="0" cellspacing="0">
   <tr>
     <td class="indicator-container">
       <%= loading_indicator_tag(:action => :record, :id => record.id) %>
     </td>
-    <% active_scaffold_config.action_links.each :record do |link| -%>
-      <% next if controller.respond_to? link.security_method and !controller.send(link.security_method) -%>
-      <td>
-        <%= record.authorized_for?(:action => link.crud_type) ? render_action_link(link, url_options) : "<a class='disabled'>#{link.label}</a>" -%>
-      </td>
-    <% end -%>
+      <%= render :partial => 'action_group', :locals => {:action_links => action_links || active_scaffold_config.action_links.member,
+                                                         :url_options => url_options,
+                                                         :record => record,
+                                                         :traverse_options => {:for => record},
+                                                         :start_level_0_tag => '<td>',
+                                                         :end_level_0_tag => '</td>'} %>
   </tr>
 </table>
+</td>
+

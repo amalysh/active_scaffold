@@ -1,21 +1,34 @@
-<% href = url_for(params_for(:action => :update_table, :escape => false).delete_if{|k,v| k == 'search'}) -%>
-<%= form_remote_tag :url => href,
-                    :method => :get,
-                    :before => "addActiveScaffoldPageToHistory('#{href}', '#{params[:controller]}')",
-                    :after => "$('#{loading_indicator_id(:action => :search, :id => params[:id])}').style.visibility = 'visible'; Form.disable('#{search_form_id}');",
-                    :complete => "$('#{loading_indicator_id(:action => :search, :id => params[:id])}').style.visibility = 'hidden'; Form.enable('#{search_form_id}');",
-                    :failure => "ActiveScaffold.report_500_response('#{active_scaffold_id}')",
-                    :update => active_scaffold_content_id,
-                    :html => { :href => href, :id => search_form_id, :class => 'search', :method => :get } %>
-  <input type="text" name="search" size="50" value="<%= params[:search] -%>" class="text-input" id="<%= search_input_id %>" autocompleted="off" />
+<% live_search = active_scaffold_config.search.live? -%>
+<% url_options =  params_for(:action => :index, :escape => false).delete_if{|k,v| k == 'search'} -%>
+<%=
+options = {:id => element_form_id(:action => 'search'),
+           :class => "as_form search",
+           :remote => true,
+           :method => :get}
+options['data-loading'] = true unless live_search
+  form_tag url_options, options %>
+  <%= text_field_tag :search, search_params, :class => 'text-input', :id => search_input_id, :size => 50, :autocomplete => :off %>
   <%= submit_tag as_(:search), :class => "submit" %>
-  <a href="javascript:void(0)" class="cancel" onclick="f = this.up('form'); f.reset(); f.onsubmit();"><%= as_(:reset) -%></a>
+  <%= link_to as_(:reset), url_for(url_options.merge(:search => '')), :class => 'as_cancel', :remote => true %>
   <%= loading_indicator_tag(:action => :search) %>
 </form>
 
 <script type="text/javascript">
 //<![CDATA[
-  new TextFieldWithExample('<%= search_input_id %>', '<%= as_(:search_terms) %>');
-  Form.focusFirstElement('<%= search_form_id -%>');
+<% if ActiveScaffold.js_framework == :prototype %>
+  new TextFieldWithExample('<%= search_input_id %>', '<%= as_(live_search ? :live_search : :search_terms) %>', {focus: true});
+<% end -%>
+<% if live_search && ActiveScaffold.js_framework == :prototype -%>
+  $(<%= search_input_id.to_json.html_safe %>).next().hide();
+  new Form.Element.DelayedObserver('<%= search_input_id %>', 0.5, function(element, value) {
+    if (!$(element.id)) return false; // because the element may have been destroyed
+    $(element).next().click();
+  });
+<% elsif live_search && ActiveScaffold.js_framework == :jquery %>
+  $(<%= "##{search_input_id}".to_json.html_safe %>).next().hide();
+  $(<%= "##{search_input_id}".to_json.html_safe %>).delayedObserver(0.5, function() {
+     $(<%= "##{search_input_id}".to_json.html_safe %>).parent().trigger("submit");});
+<% end -%>
+ActiveScaffold.focus_first_element_of_form('<%= element_form_id(:action => 'search') %>');
 //]]>
 </script>

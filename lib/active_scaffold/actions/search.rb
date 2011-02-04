@@ -1,8 +1,11 @@
 module ActiveScaffold::Actions
   module Search
+    include ActiveScaffold::Actions::CommonSearch
     def self.included(base)
       base.before_filter :search_authorized_filter, :only => :show_search
-      base.before_filter :do_search
+      base.before_filter :store_search_params_into_session, :only => [:index]
+      base.before_filter :do_search, :only => [:index]
+      base.helper_method :search_params
     end
 
     def show_search
@@ -17,27 +20,21 @@ module ActiveScaffold::Actions
       render(:partial => "search")
     end
     def do_search
-      @query = params[:search].to_s.strip rescue ''
-
-      unless @query.empty?
+      query = search_params.to_s.strip rescue ''
+      unless query.empty?
         columns = active_scaffold_config.search.columns
-        like_pattern = active_scaffold_config.search.full_text_search? ? '%?%' : '?%'
-        search_conditions = self.class.create_conditions_for_columns(@query.split(' '), columns, like_pattern)
+        text_search = active_scaffold_config.search.text_search
+        search_conditions = self.class.create_conditions_for_columns(query.split(' '), columns, text_search)
         self.active_scaffold_conditions = merge_conditions(self.active_scaffold_conditions, search_conditions)
         @filtered = !search_conditions.blank?
 
         includes_for_search_columns = columns.collect{ |column| column.includes}.flatten.uniq.compact
-        self.active_scaffold_joins.concat includes_for_search_columns
+        self.active_scaffold_includes.concat includes_for_search_columns
 
         active_scaffold_config.list.user.page = nil
       end
     end
 
-    # The default security delegates to ActiveRecordPermissions.
-    # You may override the method to customize.
-    def search_authorized?
-      authorized_for?(:action => :read)
-    end
     private
     def search_authorized_filter
       link = active_scaffold_config.search.link || active_scaffold_config.search.class.link

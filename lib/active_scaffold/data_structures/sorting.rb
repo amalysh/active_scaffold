@@ -7,7 +7,26 @@ module ActiveScaffold::DataStructures
       @columns = columns
       @clauses = []
     end
+    
+    def set_default_sorting(model)
+      model_scope = model.send(:current_scoped_methods)
+      order_clause = model_scope.arel.order_clauses.join(",") if model_scope
 
+      # If an ORDER BY clause is found set default sorting according to it, else
+      # fallback to setting primary key ordering
+      if order_clause
+        set_sorting_from_order_clause(order_clause, model.table_name)
+        @default_sorting = true
+      else
+        set(model.primary_key, 'ASC') if model.column_names.include?(model.primary_key)
+      end
+    end
+
+    def set_nested_sorting(table_name, order_clause)
+      clear
+      set_sorting_from_order_clause(order_clause, table_name)
+    end
+    
     # add a clause to the sorting, assuming the column is sortable
     def add(column_name, direction = nil)
       direction ||= 'ASC'
@@ -32,6 +51,7 @@ module ActiveScaffold::DataStructures
 
     # clears the sorting
     def clear
+      @default_sorting = false
       @clauses = []
     end
 
@@ -65,6 +85,24 @@ module ActiveScaffold::DataStructures
       @clauses.first
     end
 
+    # builds an order-by clause
+    def clause
+      return nil if sorts_by_method? || default_sorting?
+
+      # unless the sorting is by method, create the sql string
+      order = []
+      each do |sort_column, sort_direction|
+        sql = sort_column.sort[:sql]
+        next if sql.nil? or sql.empty?
+
+        sql.each do |sub_sql|
+          order << "#{sub_sql} #{sort_direction}"
+        end
+      end
+
+      order.join(', ') unless order.empty?
+    end
+
     protected
 
     # retrieves the sorting clause for the given column
@@ -84,6 +122,49 @@ module ActiveScaffold::DataStructures
 
     def mixed_sorting?
       sorts_by_method? and sorts_by_sql?
+    end
+    
+    def default_sorting?
+      @default_sorting
+    end
+
+    def set_sorting_from_order_clause(order_clause, model_table_name = nil)
+      clear
+      order_clause.split(',').each do |criterion|
+        unless criterion.blank?
+          order_parts = extract_order_parts(criterion)
+          add(order_parts[:column_name], order_parts[:direction]) unless different_table?(model_table_name, order_parts[:table_name])
+        end
+      end
+    end
+    
+    def extract_order_parts(criterion_parts)
+      column_name_part, direction_part = criterion_parts.strip.split(' ')
+      column_name_parts = column_name_part.split('.')
+      order = {:direction => extract_direction(direction_part),
+        :column_name => remove_quotes(column_name_parts.last)}
+      order[:table_name] = remove_quotes(column_name_parts[-2]) if column_name_parts.length >= 2
+      order
+    end
+    
+    def different_table?(model_table_name, order_table_name)
+      !order_table_name.nil? && model_table_name != order_table_name
+    end
+    
+    def remove_quotes(sql_name)
+      if sql_name.starts_with?('"') || sql_name.starts_with?('`')
+        sql_name[1, (sql_name.length - 2)]
+      else
+        sql_name
+      end
+    end
+    
+    def extract_direction(direction_part)
+      if direction_part.to_s.upcase == 'DESC'
+        'DESC'
+      else
+        'ASC'
+      end
     end
   end
 end

@@ -2,7 +2,6 @@ module ActiveScaffold::Actions
   module Create
     def self.included(base)
       base.before_filter :create_authorized_filter, :only => [:new, :create]
-      base.prepend_before_filter :constraints_for_nested_create, :only => [:new, :create]
       base.verify :method => :post,
                   :only => :create,
                   :redirect_to => { :action => :index }
@@ -15,11 +14,14 @@ module ActiveScaffold::Actions
 
     def create
       do_create
-      @insert_row = params[:parent_controller].nil?
       respond_to_action(:create)
     end
 
     protected
+    def response_location
+      url_for(params_for(:action => "show", :id => @record.id)) if successful?
+    end
+
     def new_respond_to_html
       if successful?
         render(:action => 'create')
@@ -35,22 +37,20 @@ module ActiveScaffold::Actions
     def create_respond_to_html
       if params[:iframe]=='true' # was this an iframe post ?
         responds_to_parent do
-          if successful?
-            render :action => 'on_create.js'
-          else
-            render :action => 'form_messages_on_create.js'
-          end
+          render :action => 'on_create.js', :layout => false
         end
       else
         if successful?
           flash[:info] = as_(:created_model, :model => @record.to_label)
           if active_scaffold_config.create.edit_after_create
-            redirect_to params.merge(:action => "edit", :id => @record.id)
+            redirect_to params_for(:action => "edit", :id => @record.id)
+          elsif active_scaffold_config.create.persistent
+            redirect_to params_for(:action => "new")
           else
             return_to_main
           end
         else
-          if params[:nested].nil? && active_scaffold_config.actions.include?(:list) && active_scaffold_config.list.always_show_create
+          if !nested? && active_scaffold_config.actions.include?(:list) && active_scaffold_config.list.always_show_create
             do_list
             render(:action => 'list')
           else
@@ -61,37 +61,34 @@ module ActiveScaffold::Actions
     end
 
     def create_respond_to_js
+      if successful? && active_scaffold_config.create.refresh_list && !render_parent?
+        do_search if respond_to? :do_search
+        do_list
+      end
       render :action => 'on_create'
     end
 
     def create_respond_to_xml
-      render :xml => response_object.to_xml, :content_type => Mime::XML, :status => response_status
+      render :xml => response_object.to_xml(:only => active_scaffold_config.create.columns.names), :content_type => Mime::XML, :status => response_status, :location => response_location
     end
 
     def create_respond_to_json
-      render :text => response_object.to_json, :content_type => Mime::JSON, :status => response_status
+      render :text => response_object.to_json(:only => active_scaffold_config.create.columns.names), :content_type => Mime::JSON, :status => response_status, :location => response_location
     end
 
     def create_respond_to_yaml
-      render :text => response_object.to_yaml, :content_type => Mime::YAML, :status => response_status
-    end
-
-    def constraints_for_nested_create
-      if params[:parent_column] && params[:parent_id]
-        @old_eid = params[:eid]
-        @remove_eid = true
-        constraints = {params[:parent_column].to_sym => params[:parent_id]}
-        params[:eid] = Digest::MD5.hexdigest(params[:parent_controller] + params[:controller].to_s + constraints.to_s)
-        session["as:#{params[:eid]}"] = {:constraints => constraints}
-      end
+      render :text => Hash.from_xml(response_object.to_xml(:only => active_scaffold_config.create.columns.names)).to_yaml, :content_type => Mime::YAML, :status => response_status, :location => response_location
     end
 
     # A simple method to find and prepare an example new record for the form
     # May be overridden to customize the behavior (add default values, for instance)
     def do_new
-      @record = active_scaffold_config.model.new
+      @record = new_model
       apply_constraints_to_record(@record)
-      params[:eid] = @old_eid if @remove_eid
+      if nested?
+        create_association_with_parent(@record)
+        register_constraints_with_action_columns(nested.constrained_fields)
+      end
       @record
     end
 
@@ -100,9 +97,12 @@ module ActiveScaffold::Actions
     def do_create
       begin
         active_scaffold_config.model.transaction do
-          @record = update_record_from_params(active_scaffold_config.model.new, active_scaffold_config.create.columns, params[:record])
+          @record = update_record_from_params(new_model, active_scaffold_config.create.columns, params[:record])
           apply_constraints_to_record(@record, :allow_autosave => true)
-          params[:eid] = @old_eid if @remove_eid
+          if nested?
+            create_association_with_parent(@record) 
+            register_constraints_with_action_columns(nested.constrained_fields)
+          end
           before_create_save(@record)
           self.successful = [@record.valid?, @record.associated_valid?].all? {|v| v == true} # this syntax avoids a short-circuit
           if successful?
@@ -124,8 +124,13 @@ module ActiveScaffold::Actions
 
     # The default security delegates to ActiveRecordPermissions.
     # You may override the method to customize.
+    
+    def create_ignore?
+      nested? && active_scaffold_config.list.always_show_create
+    end
+    
     def create_authorized?
-      authorized_for?(:action => :create)
+      (!nested? || !nested.readonly?) && authorized_for?(:crud_type => :create)
     end
     private
     def create_authorized_filter

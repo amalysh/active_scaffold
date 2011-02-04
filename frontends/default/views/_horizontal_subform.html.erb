@@ -7,8 +7,8 @@
     <% @record = associated[index] -%>
     <% if @record.errors.count -%>
     <tr class="association-record-errors">
-      <td colspan="<%= active_scaffold_config_for(@record.class).subform.columns.length + 1 %>">
-        <%= error_messages_for :record, :object_name => @record.class.human_name.downcase %>
+      <td colspan="<%= active_scaffold_config_for(@record.class).subform.columns.length + 1 %>" id="<%= element_messages_id :action => @record.class.name.underscore, :id => "#{parent_record.id}-#{index}" %>">
+        <%= active_scaffold_error_messages_for :record, :object_name => @record.class.model_name.human.downcase %>
       </td>
     </tr>
     <% end %>

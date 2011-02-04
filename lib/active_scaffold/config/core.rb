@@ -1,6 +1,8 @@
-require 'active_scaffold/config/base'
 module ActiveScaffold::Config
-  class Core < Base
+  # to fix the ckeditor bridge problem
+  class Core < ActiveScaffold::Config::Base
+  # code commented out (see above)
+  #class Core < Base
     # global level configuration
     # --------------------------
 
@@ -13,7 +15,7 @@ module ActiveScaffold::Config
 
     # configures where the ActiveScaffold plugin itself is located. there is no instance version of this.
     cattr_accessor :plugin_directory
-    @@plugin_directory = File.expand_path(__FILE__).match(/vendor\/plugins\/([^\/]*)/)[1]
+    @@plugin_directory = File.expand_path(__FILE__).match(%{(^.*)/lib/active_scaffold/config/core.rb})[1]
 
     # lets you specify a global ActiveScaffold frontend.
     cattr_accessor :frontend
@@ -54,6 +56,10 @@ module ActiveScaffold::Config
     end
     @@ignore_columns = ActiveScaffold::DataStructures::Set.new
 
+    # lets you specify whether add a create link for each sti child
+    cattr_accessor :sti_create_links
+    @@sti_create_links = true
+
     # instance-level configuration
     # ----------------------------
 
@@ -77,14 +83,23 @@ module ActiveScaffold::Config
     # lets you override the global ActiveScaffold theme for a specific controller
     attr_accessor :theme
 
+    # lets you specify whether add a create link for each sti child for a specific controller
+    attr_accessor :sti_create_links
+    def add_sti_create_links?
+      self.sti_create_links and not self.sti_children.nil?
+    end
+
     # action links are used by actions to tie together. they appear as links for each record, or general links for the ActiveScaffold.
     attr_reader :action_links
 
     # a generally-applicable name for this ActiveScaffold ... will be used for generating page/section headers
     attr_writer :label
     def label(options={})
-      as_(@label, options) || model.human_name(options.merge(options[:count].to_i == 1 ? {} : {:default => model.name.pluralize}))
+      as_(@label, options) || model.model_name.human(options.merge(options[:count].to_i == 1 ? {} : {:default => model.name.pluralize}))
     end
+
+    # STI children models, use an array of model names
+    attr_accessor :sti_children
 
     ##
     ## internal usage only below this point
@@ -110,6 +125,7 @@ module ActiveScaffold::Config
       # inherit the global frontend
       @frontend = self.class.frontend
       @theme = self.class.theme
+      @sti_create_links = self.class.sti_create_links
 
       # inherit from the global set of action links
       @action_links = self.class.action_links.clone
@@ -124,6 +140,20 @@ module ActiveScaffold::Config
         action = self.send(action_name)
         next unless action.respond_to? :columns
         action.columns.set_columns(self.columns)
+      end
+    end
+
+    # To be called after your finished configuration
+    def _configure_sti
+      column = self.model.inheritance_column
+      if sti_create_links
+        self.columns[column].form_ui ||= :hidden
+      else
+        self.columns[column].form_ui ||= :select
+        self.columns[column].options ||= {}
+        self.columns[column].options[:options] = self.sti_children.collect do |model_name|
+          [model_name.to_s.camelize.constantize.model_name.human, model_name.to_s.camelize]
+        end
       end
     end
 
@@ -187,3 +217,4 @@ module ActiveScaffold::Config
     end
   end
 end
+

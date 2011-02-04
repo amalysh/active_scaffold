@@ -6,12 +6,13 @@ module ActiveScaffold::Config
       @core = core_config
       # start with the ActionLink defined globally
       @link = self.class.link.clone
+      @action_group = self.class.action_group.clone if self.class.action_group
     end
 
     # global level configuration
     # --------------------------
     cattr_accessor :link
-    @@link = ActiveScaffold::DataStructures::ActionLink.new('show', :label => :show, :type => :record, :security_method => :show_authorized?)
+    @@link = ActiveScaffold::DataStructures::ActionLink.new('show', :label => :show, :type => :member, :security_method => :show_authorized?)
     # instance-level configuration
     # ----------------------------
 
@@ -28,9 +29,7 @@ module ActiveScaffold::Config
       self.columns = @core.columns._inheritable unless @columns # lazy evaluation
       @columns
     end
-    def columns=(val)
-      @columns = ActiveScaffold::DataStructures::ActionColumns.new(*val)
-      @columns.action = self
-    end
+    
+    public :columns=
   end
 end

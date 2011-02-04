@@ -6,14 +6,17 @@ module ActiveScaffold::DataStructures
       self.action = action.to_s
       self.label = action
       self.confirm = false
-      self.type = :table
+      self.type = :collection
       self.inline = true
       self.method = :get
-      self.crud_type = :destroy if [:destroy].include?(action.to_sym)
+      self.crud_type = :delete if [:destroy].include?(action.to_sym)
       self.crud_type = :create if [:create, :new].include?(action.to_sym)
       self.crud_type = :update if [:edit, :update].include?(action.to_sym)
       self.crud_type ||= :read
+      self.parameters = {}
       self.html_options = {}
+      self.column = nil
+      self.image = nil
 
       # apply quick properties
       options.each_pair do |k, v|
@@ -26,7 +29,16 @@ module ActiveScaffold::DataStructures
     attr_accessor :action
     
     # the controller for this action link. if nil, the current controller should be assumed.
-    attr_accessor :controller
+    attr_writer :controller
+
+    def controller
+      @controller = @controller.call if @controller.is_a?(Proc)
+      @controller
+    end
+
+    def static_controller?
+      !(@controller.is_a?(Proc) || (@controller == :polymorph))
+    end
 
     # a hash of request parameters
     attr_accessor :parameters
@@ -39,11 +51,14 @@ module ActiveScaffold::DataStructures
     def label
       @label.is_a?(Symbol) ? as_(@label) : @label
     end
+    
+    # image to use {:name => 'arrow.png', :size => '16x16'}
+    attr_accessor :image
 
     # if the action requires confirmation
     attr_writer :confirm
-    def confirm
-      @confirm.is_a?(String) ? as_(@confirm) : @confirm
+    def confirm(label = '')
+      @confirm.is_a?(String) ? @confirm : as_(@confirm, :label => label)
     end
     def confirm?
       @confirm ? true : false
@@ -62,12 +77,18 @@ module ActiveScaffold::DataStructures
     # note that this is only the UI part of the security. to prevent URL hax0rz, you also need security on requests (e.g. don't execute update method unless authorized).
     attr_writer :security_method
     def security_method
-      @security_method || "#{self.label.underscore.downcase.gsub(/ /, '_')}_authorized?"
+      @security_method || "#{self.action}_authorized?"
     end
 
+    def security_method_set?
+      !!@security_method
+    end
+    
+    attr_accessor :ignore_method
+    
     # the crud type of the (eventual?) action. different than :method, because this crud action may not be imminent.
-    # this is used to determine record-level authorization (e.g. record.authorized_for?(:action => link.crud_type).
-    # options are :create, :read, :update, and :destroy
+    # this is used to determine record-level authorization (e.g. record.authorized_for?(:crud_type => link.crud_type).
+    # options are :create, :read, :update, and :delete
     attr_accessor :crud_type
 
     # an "inline" link is inserted into the existing page
@@ -110,12 +131,12 @@ module ActiveScaffold::DataStructures
     def page?; @page end
 
     # where the result of this action should insert in the display.
-    # for :type => :table, supported values are:
+    # for :type => :collection, supported values are:
     #   :top
     #   :bottom
     #   :replace (for updating the entire table)
     #   false (no attempt at positioning)
-    # for :type => :record, supported values are:
+    # for :type => :member, supported values are:
     #   :before
     #   :replace
     #   :after
@@ -123,14 +144,28 @@ module ActiveScaffold::DataStructures
     attr_writer :position
     def position
       return @position unless @position.nil? or @position == true
-      return :replace if self.type == :record
-      return :top if self.type == :table
+      return :replace if self.type == :member
+      return :top if self.type == :collection
       raise "what should the default position be for #{self.type}?"
     end
 
-    # what type of link this is. currently supported values are :table and :record.
+    # what type of link this is. currently supported values are :collection and :member.
     attr_accessor :type
+
     # html options for the link
     attr_accessor :html_options
+    
+    # nested action_links are referencing a column
+    attr_accessor :column
+    
+    # indicates that this a nested_link
+    def nested_link?
+      @column || (parameters && parameters[:named_scope])
+    end
+    
+    # Internal use: generated eid for this action_link
+    attr_accessor :eid
+    
+    
   end
 end
