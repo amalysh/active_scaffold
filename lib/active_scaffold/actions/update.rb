@@ -53,7 +53,7 @@ module ActiveScaffold::Actions
         do_search if respond_to? :do_search
         do_list
       end
-      render :action => 'on_update'
+      render :action => 'on_update', :layout => false
     end
     def update_respond_to_xml
       render :xml => response_object.to_xml(:only => active_scaffold_config.update.columns.names), :content_type => Mime::XML, :status => response_status
