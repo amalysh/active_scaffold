@@ -65,7 +65,7 @@ module ActiveScaffold::Actions
         do_search if respond_to? :do_search
         do_list
       end
-      render :action => 'on_create'
+      render :action => 'on_create', :layout => false
     end
 
     def create_respond_to_xml

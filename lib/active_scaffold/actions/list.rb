@@ -33,12 +33,12 @@ module ActiveScaffold::Actions
     end
     def list_respond_to_js
       if params[:adapter]
-        render(:partial => 'list_with_header')
+        render(:partial => 'list_with_header', :layout => false)
       elsif params[:embedded]
         params.delete(:embedded)
-        render(:partial => 'list_with_header')
+        render(:partial => 'list_with_header', :layout => false)
       else
-        render :action => 'list.js'
+        render :action => 'list.js', :layout => false
       end
     end
     def list_respond_to_xml
