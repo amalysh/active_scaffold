@@ -234,6 +234,7 @@ module ActiveScaffold
         sort_column, sort_direction = clause
         sql = sort_column.sort[:sql]
         next if sql.nil? or sql.empty?
+        sql = sql.send(sql.respond_to?(:lines) ? :lines : :to_s).to_a
 
         sql.each do |sub_sql|
           order << "#{sub_sql} #{sort_direction}"
