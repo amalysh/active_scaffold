@@ -30,7 +30,8 @@ module ActiveScaffold
       def condition_for_column(column, value, like_pattern = '%?%')
         # we must check false or not blank because we want to search for false but false is blank
         return unless column and column.search_sql and not value.blank?
-        search_ui = column.search_ui || column.column.type
+        search_ui = column.search_ui
+        search_ui ||= column.column.type unless column.column.nil?
         if self.respond_to?("condition_for_#{column.name}_column")
           self.send("condition_for_#{column.name}_column", column, value, like_pattern)
         elsif self.respond_to?("condition_for_#{search_ui}_type")
