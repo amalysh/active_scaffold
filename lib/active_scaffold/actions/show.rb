@@ -35,8 +35,6 @@ module ActiveScaffold::Actions
     # May be overridden to customize show routine
     def do_show
       @record = find_if_allowed(params[:id], :read)
-      @record.inspect()
-      @record
     end
 
     # The default security delegates to ActiveRecordPermissions.
