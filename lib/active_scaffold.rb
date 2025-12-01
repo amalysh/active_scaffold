@@ -66,7 +66,7 @@ module ActiveScaffold
       @active_scaffold_overrides = []
       ActionController::Base.view_paths.each do |dir|
         active_scaffold_overrides_dir = File.join(dir,"active_scaffold_overrides")
-        @active_scaffold_overrides << active_scaffold_overrides_dir if File.exists?(active_scaffold_overrides_dir)
+        @active_scaffold_overrides << active_scaffold_overrides_dir if File.exist?(active_scaffold_overrides_dir)
       end
       @active_scaffold_frontends = []
       if active_scaffold_config.frontend.to_sym != :default
